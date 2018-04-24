@@ -14,10 +14,12 @@
 <body>
   <svg width="960" height="600" id="svg"></svg>
   <div>
-    Input iterations: 
-    <input id="iterations" type="number" max="10000" step="100" value="2000"/>
-    <button id="start" onclick="start()">start</button>
-    <button id="step" onclick="step()">step</button>
+    <button onclick="restart()">restart</button>
+    <button onclick="reset()">reset</button>
+    <button onclick="step()">step</button>
+    iterations: 
+    <input id="inputStep" type="number" value="10" style="width: 50px"/>
+    <button onclick="run()">continue</button>
   </div>
 </body>
 

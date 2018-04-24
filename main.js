@@ -1,40 +1,16 @@
 var nodes, links;
 var svg, width, height, centerX, centerY;
-const colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
+var colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
     "green", "red", "pink", "purple", "plum", "brown"];
-
-// var repulsionConst = 4000,
-//     // attractionConst = 10, //log
-//     attractionConst = 0.1, //linear
-//     gravityConst = 1000,
-//     defaultLinkLength = 50,
-//     //displacementThreshold = 0.01,
-//     movementRatio = 0.5,
-//     iterations = 2000;
-
-// var repulsionConst = 1000,
-//     attractionConst = 10,
-//     // attractionConst = 0.3,
-//     gravityConst = -5000, //emmm
-//     defaultLinkLength = 50,
-//     movementRatio = 0.3,
-//     iterations = 2000;
-
-// var repulsionConst = 10000,
-//     attractionConst = 20,
-//     // attractionConst = 0.3,
-//     gravityConst = 5000,
-//     defaultLinkLength = 50,
-//     movementRatio = 0.3,
-//     iterations = 2500;
 
 var repulsionConst = 800,
     attractionConsts,
     attractionConstBase = 20,
     defaultLinkLength = 50,
-    movementRatio = 0.3,
-    iterations = 2500,
-    paintIterationInterval = 25;
+    movementRatio = 0.5,
+    paintInterval = 7,
+    // moveNodesRatio = 0.1,
+    forceThreshold = 1;
 
 var initialRadius = 10,
     initialAngle = Math.PI * (3 - Math.sqrt(5));
@@ -69,6 +45,7 @@ window.onload = function () {
     initializePos();
     initializeAttractionConsts();
     addToSVG();
+    console.log("nodes: " + nodes.length + ", links: " + links.length);
 }
 
 function initializePos() {
@@ -78,7 +55,7 @@ function initializePos() {
             angle = i * initialAngle;
         node.x = radius * Math.cos(angle) + centerX;
         node.y = radius * Math.sin(angle) + centerY;
-        node.netFroce = new Force(0, 0);
+        node.netForce = new Force(0, 0);
         node.index = i;
     });
 }
@@ -132,7 +109,7 @@ function addToSVG() {
     // });
     // svg.appendChild(gNodes);
 
-    
+
     svg.innerHTML = '<g class="links">';
     links.forEach(function (link) {
         var node1 = link.source;
@@ -170,38 +147,49 @@ function updateSVG() {
     });
 }
 
-function start() {
-    iterations = document.getElementById("iterations").value;
+function restart() {
+    reset();
+    run();
+}
+function reset() {
     initializePos();
     updateSVG();
+}
 
-    console.log("started " + iterations + " iterations");
-
-    // for (var i = 0; i < iterations; i++) {
-    //     calForce();
-    //     moveNodes();
-    //     if (i % 100 == 0) {
-    //         updateSVG();
-    //     }
-    // }
-
-    var i = 0;
-    var timer = setInterval(function () {
-        for (var j = 0; j < paintIterationInterval && i < iterations; j++ , i++) {
+function step() {
+    var iterations = document.getElementById("inputStep").value,
+        i = 0;
+    function loop() {
+        for (var j = 0; j < paintInterval; j++) {
             calForce();
             moveNodes();
         }
         updateSVG();
-        if (i >= iterations) {
-            clearInterval(timer);
+        i += paintInterval;
+        if (i < iterations) {
+            requestAnimationFrame(loop);
         }
-    }, 1);
+    }
+
+    requestAnimationFrame(loop);
 }
 
-function step() {
-    calForce();
-    moveNodes();
-    updateSVG();
+function run() {
+    function loop() {
+        var force;
+        for (var j = 0; j < paintInterval; j++) {
+            calForce();
+            force = moveNodes();
+        }
+        updateSVG();
+        // conskole.log(force);
+        // if (force > nodes.length * moveNodesRatio) {
+        if (force > forceThreshold) {
+            requestAnimationFrame(loop);
+        }
+    }
+
+    requestAnimationFrame(loop);
 }
 
 function calForce() {
@@ -209,8 +197,8 @@ function calForce() {
         nodes.forEach(function (node2, index2) {
             if (index2 < index1) {
                 var force = calRepulsionForce(node1, node2);
-                node1.netFroce.add(force);
-                node2.netFroce.add(force.reverse());
+                node1.netForce.add(force);
+                node2.netForce.add(force.reverse());
             }
         });
     });
@@ -218,8 +206,8 @@ function calForce() {
         var node1 = link.source;
         var node2 = link.target;
         var force = calAttractionForce(node1, node2, index);
-        node1.netFroce.add(force);
-        node2.netFroce.add(force.reverse());
+        node1.netForce.add(force);
+        node2.netForce.add(force.reverse());
     });
 }
 
@@ -227,29 +215,36 @@ function moveNodes() {
     var xSum = 0,
         ySum = 0,
         xShift,
-        yShift;
+        yShift,
+        force = 0;
 
+    //move nodes according to force
     nodes.forEach(function (node) {
-        node.x += movementRatio * node.netFroce.x;
+        node.x += movementRatio * node.netForce.x;
         if (node.x < 0) {
             node.x = 0;
         } else if (node.x > width) {
             node.x = width;
         }
-        node.y += movementRatio * node.netFroce.y;
+
+        node.y += movementRatio * node.netForce.y;
         if (node.y < 0) {
             node.y = 0;
         } else if (node.y > height) {
             node.y = height;
         }
 
-        node.netFroce.reset();
-    });
+        //cannot use displacement as condition, since it ignores the potential of movement
+        force += Math.abs(node.netForce.x);
+        force += Math.abs(node.netForce.y);
 
-    nodes.forEach(function (node) {
+        node.netForce.reset();
+
         xSum += node.x;
         ySum += node.y;
     });
+
+    //center the layout
     xShift = xSum / nodes.length - centerX;
     yShift = ySum / nodes.length - centerY;
 
@@ -257,6 +252,8 @@ function moveNodes() {
         node.x -= xShift;
         node.y -= yShift;
     });
+
+    return force;
 }
 
 function Force(x, y) {
