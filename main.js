@@ -33,7 +33,8 @@ var repulsionConst = 800,
     attractionConstBase = 20,
     defaultLinkLength = 50,
     movementRatio = 0.3,
-    iterations = 2500;
+    iterations = 2500,
+    paintIterationInterval = 25;
 
 var initialRadius = 10,
     initialAngle = Math.PI * (3 - Math.sqrt(5));
@@ -131,6 +132,7 @@ function addToSVG() {
     // });
     // svg.appendChild(gNodes);
 
+    
     svg.innerHTML = '<g class="links">';
     links.forEach(function (link) {
         var node1 = link.source;
@@ -146,23 +148,60 @@ function addToSVG() {
     svg.innerHTML += '</g>';
 }
 
+function updateSVG() {
+    $("line").each(function (index) {
+        var link = links[index];
+        var node1 = link.source;
+        var node2 = link.target;
+        $(this).attr({
+            x1: node1.x,
+            y1: node1.y,
+            x2: node2.x,
+            y2: node2.y
+        });
+    });
+
+    $("circle").each(function (index) {
+        var node = nodes[index];
+        $(this).attr({
+            cx: node.x,
+            cy: node.y
+        });
+    });
+}
+
 function start() {
     iterations = document.getElementById("iterations").value;
+    initializePos();
+    updateSVG();
+
     console.log("started " + iterations + " iterations");
 
-    initializePos();
-    for (var i = 0; i < iterations; i++) {
-        calForce();
-        moveNodes();
-    }
-    addToSVG();
-    console.log("finished");
+    // for (var i = 0; i < iterations; i++) {
+    //     calForce();
+    //     moveNodes();
+    //     if (i % 100 == 0) {
+    //         updateSVG();
+    //     }
+    // }
+
+    var i = 0;
+    var timer = setInterval(function () {
+        for (var j = 0; j < paintIterationInterval && i < iterations; j++ , i++) {
+            calForce();
+            moveNodes();
+        }
+        updateSVG();
+        if (i >= iterations) {
+            clearInterval(timer);
+        }
+    }, 1);
 }
 
 function step() {
     calForce();
     moveNodes();
-    addToSVG();
+    updateSVG();
 }
 
 function calForce() {
