@@ -4,6 +4,7 @@ var colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
     "green", "red", "pink", "purple", "plum", "brown"];
 // var SVGNS = 'http://www.w3.org/2000/svg';
 var selected = null,
+    moving,
     oldMouseX,
     oldMouseY;
 
@@ -112,41 +113,49 @@ function addToSVG() {
     $("circle").each(function (index) {
         $(this).mousedown(function (evt) {
             selected = nodes[index];
+            moving = false;
             oldMouseX = evt.clientX;
             oldMouseY = evt.clientY;
-            // console.log("client: " + oldMouseX + ", " + oldMouseY);
-            // console.log("page: " + evt.pageX + ", " + evt.pageY);
-            // console.log("screen: " + evt.screenX + ", " + evt.screenY);
-            // console.log("circle: " + selected.x + ", " +selected.y);
         });
+
+        // $(this)
+        //     .on("dragstart", function () {
+        //         selected = nodes[index];
+        //     })
+        //     .on("drag", function (evt) {
+        //         selected.x = evt.clientX;
+        //         selected.y = evt.clientY;
+        //         requestAnimationFrame(update);
+        //     })
+        //     .on("dragend", function (){
+        //         selected = null;
+        //     });
     });
 }
 
 function moveElem(evt) {
-    // console.log("client: " + oldMouseX + ", " + oldMouseY);
-    // console.log("page: " + evt.pageX + ", " + evt.pageY);
-    // console.log("screen: " + evt.screenX + ", " + evt.screenY);
+    moving = true;
 
     var newMouseX = evt.clientX;
     var newMouseY = evt.clientY;
 
-    if (oldMouseX !== undefined) {
-        var dx = newMouseX - oldMouseX;
-        var dy = newMouseY - oldMouseY;
-    }
+    var dx = newMouseX - oldMouseX;
+    var dy = newMouseY - oldMouseY;
+
+    oldMouseX = newMouseX;
+    oldMouseY = newMouseY;
 
     if (selected !== null) {
         selected.x += dx;
         selected.y += dy;
+        // requestAnimationFrame(update);
         run();
     }
-
-    oldMouseX = newMouseX;
-    oldMouseY = newMouseY;
 }
 
 function stopMovingElem() {
     selected = null;
+    run();
 }
 
 function updateSVG() {
@@ -180,39 +189,40 @@ function reset() {
     updateSVG();
 }
 
+function update() {
+    var force;
+    for (var j = 0; j < paintInterval; j++) {
+        calForce();
+        force = moveNodes();
+    }
+    updateSVG();
+    return force;
+}
 
 function run() {
     function loop() {
-        var force;
-        for (var j = 0; j < paintInterval; j++) {
-            calForce();
-            force = moveNodes();
-        }
-        updateSVG();
-        // conskole.log(force);
-        // if (force > nodes.length * moveNodesRatio) {
-        if (force > forceThreshold) {
+        var force = update();
+        var flag = moving;
+        moving = false;
+        
+        if (force > forceThreshold && selected == null) {
             requestAnimationFrame(loop);
         }
     }
-
     requestAnimationFrame(loop);
 }
+
 function step() {
     var iterations = document.getElementById("inputStep").value,
         i = 0;
+
     function loop() {
-        for (var j = 0; j < paintInterval; j++) {
-            calForce();
-            moveNodes();
-        }
-        updateSVG();
+        update();
         i += paintInterval;
         if (i < iterations) {
             requestAnimationFrame(loop);
         }
     }
-
     requestAnimationFrame(loop);
 }
 
