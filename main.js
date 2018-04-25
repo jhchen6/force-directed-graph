@@ -1,17 +1,23 @@
 var svg, width, height, centerX, centerY;
 var colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
     "green", "red", "pink", "purple", "plum", "brown"];
-var selected = null;
 
 var repulsionConst = 30,
     attractionConstBase = 1,
     attractionConsts,
     attractionBias,
-    defaultLinkLength = 30,
+    defaultLinkLength = 30;
+
+var selected = null,
+    animationFrames = [],
     velocityDecay = 0.6,
     paintInterval = 25,
-    alpha = 1,
-    alphaMin = 0.001,
+    initialAlpha = 2,
+    dragEndAlpha = 1,
+    alpha,
+    // alphaMin = 0.001,
+    // alphaDecay = 1 - Math.pow(alphaMin, 1 / 300),
+    alphaMin = 0.003,
     alphaDecay = 1 - Math.pow(alphaMin, 1 / 300),
     alphaTarget = 0;
 
@@ -50,8 +56,8 @@ window.onload = function () {
     initializePos();
     initializeConsts();
     addToSVG();
-
     svg.onmousemove = moveElem;
+    alpha = initialAlpha;
     run();
 }
 
@@ -126,11 +132,21 @@ function moveElem(evt) {
     if (selected != null) {
         selected.x = pt.x;
         selected.y = pt.y;
+        animationFrames.forEach(function (animationFrame) {
+            cancelAnimationFrame(animationFrame);
+        });
+        alpha = initialAlpha;
+        run();
     }
 }
 
 function stopMovingElem() {
     selected = null;
+    animationFrames.forEach(function (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+    });
+    alpha = dragEndAlpha;
+    run();
 }
 
 function updateSVG() {
@@ -155,21 +171,26 @@ function updateSVG() {
     });
 }
 
-function update() {
-    for (var j = 0; j < paintInterval; j++) {
-        // alpha += (alphaTarget - alpha) * alphaDecay;
-        calForce();
-        moveNodes();
-    }
-    updateSVG();
-}
-
 function run() {
     function loop() {
-        update();
-        requestAnimationFrame(loop);
+        alpha += (alphaTarget - alpha) * alphaDecay;
+        for (var j = 0; j < paintInterval; j++) {
+            calForce();
+            moveNodes();
+        }
+        updateSVG();
+
+        if (alpha > alphaMin) {
+            animationFrames.push(requestAnimationFrame(loop));
+        }
     }
-    requestAnimationFrame(loop);
+    animationFrames.push(requestAnimationFrame(loop));
+}
+
+function restart() {
+    initializePos();
+    alpha = initialAlpha;
+    run();
 }
 
 function calForce() {
@@ -198,8 +219,10 @@ function moveNodes() {
 
     //move nodes according to force
     nodes.forEach(function (node) {
-        if (node == selected) return true;
-
+        if (node == selected) {
+            node.netForce.reset();
+            return true;
+        }
         node.netForce = node.netForce.multiply(velocityDecay);
         node.x += node.netForce.x;
         if (node.x < 0) {
@@ -213,7 +236,6 @@ function moveNodes() {
         } else if (node.y > height) {
             node.y = height;
         }
-        // node.netForce.reset();
 
         xSum += node.x;
         ySum += node.y;
@@ -284,4 +306,8 @@ function jiggle() {
 
 function color(group) {
     return colors[group];
+}
+
+function resetAlpha() {
+    alpha = initialAlpha;
 }
