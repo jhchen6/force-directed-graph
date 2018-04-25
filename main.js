@@ -70,16 +70,13 @@ function initializePos() {
 function initializeConsts() {
     var degreeCount = new Array(nodes.length),
         index;
-        function initializePos() {
-            var radius, angle;
-            nodes.forEach(function (node, i) {
-                radius = initialRadius * Math.sqrt(i),
-                    angle = i * initialAngle;
-                node.x = radius * Math.cos(angle) + centerX;
-                node.y = radius * Math.sin(angle) + centerY;
-                node.netFroce = new Force(0, 0);
-                node.index = i;
-            });
+
+    links.forEach(function (link) {
+        index = link.source.index;
+        if (degreeCount[index] == undefined) {
+            degreeCount[index] = 1;
+        } else {
+            degreeCount[index]++;
         }
         index = link.target.index;
         if (degreeCount[index] == undefined) {
