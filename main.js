@@ -2,23 +2,15 @@ var nodes, links;
 var svg, width, height, centerX, centerY;
 var colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
     "green", "red", "pink", "purple", "plum", "brown"];
-// var SVGNS = 'http://www.w3.org/2000/svg';
-var selected = null,
-    moving,
-    oldMouseX,
-    oldMouseY;
+var selected = null;
 
 var repulsionConst = 30,
-    attractionConsts,
-    bias,
-    // attractionConstBase = 20,
     attractionConstBase = 1,
-    // defaultLinkLength = 50,
+    attractionConsts,
+    attractionBias,
     defaultLinkLength = 30,
     velocityDecay = 0.6,
-    paintInterval = 10,
-    // moveNodesRatio = 0.1,
-    forceThreshold = 2,
+    paintInterval = 25,
     alpha = 1,
     alphaMin = 0.001,
     alphaDecay = 1 - Math.pow(alphaMin, 1 / 300),
@@ -42,11 +34,11 @@ window.onload = function () {
     centerX = width / 2;
     centerY = height / 2;
 
-    svg.onmousemove = moveElem;
-
     var graph = JSON.parse(textGraphInfo);
     nodes = graph.nodes;
     links = graph.links;
+    console.log("nodes: " + nodes.length);
+    console.log("links: " + links.length);
 
     var nodeIds = {};
     nodes.forEach(function (node, index) {
@@ -58,10 +50,10 @@ window.onload = function () {
     });
 
     initializePos();
-    initializeAttractionConsts();
+    initializeConsts();
     addToSVG();
-    console.log("nodes: " + nodes.length);
-    console.log("links: " + links.length);
+
+    svg.onmousemove = moveElem;
     run();
 }
 
@@ -72,12 +64,12 @@ function initializePos() {
             angle = i * initialAngle;
         node.x = radius * Math.cos(angle) + centerX;
         node.y = radius * Math.sin(angle) + centerY;
-        node.netForce = new Force(0, 0);
+        node.netForce = new Vector(0, 0);
         node.index = i;
     });
 }
 
-function initializeAttractionConsts() {
+function initializeConsts() {
     var degreeCount = new Array(nodes.length),
         index;
 
@@ -97,12 +89,12 @@ function initializeAttractionConsts() {
     });
 
     attractionConsts = new Array(links.length);
-    bias = new Array(links.length);
+    attractionBias = new Array(links.length);
     links.forEach(function (link, index) {
         degree1 = degreeCount[link.source.index];
         degree2 = degreeCount[link.target.index];
         attractionConsts[index] = attractionConstBase / Math.min(degree1, degree2);
-        bias[index] = degree1 / (degree1 + degree2);
+        attractionBias[index] = degree1 / (degree1 + degree2);
     });
 }
 
@@ -124,55 +116,23 @@ function addToSVG() {
     $("circle").each(function (index) {
         $(this).mousedown(function (evt) {
             selected = nodes[index];
-            moving = false;
-            oldMouseX = evt.clientX;
-            oldMouseY = evt.clientY;
         });
-
-        // $(this)
-        //     .on("dragstart", function () {
-        //         selected = nodes[index];
-        //     })
-        //     .on("drag", function (evt) {
-        //         selected.x = evt.clientX;
-        //         selected.y = evt.clientY;
-        //         requestAnimationFrame(update);
-        //     })
-        //     .on("dragend", function (){
-        //         selected = null;
-        //     });
     });
 }
 
 function moveElem(evt) {
-    // moving = true;
-
-    // var newMouseX = evt.clientX;
-    // var newMouseY = evt.clientY;
-
-    // var dx = newMouseX - oldMouseX;
-    // var dy = newMouseY - oldMouseY;
-
-    // oldMouseX = newMouseX;
-    // oldMouseY = newMouseY;
-
-    // if (selected !== null) {
-    //     selected.x += dx;
-    //     selected.y += dy;
-    //     // requestAnimationFrame(update);
-    //     // run();
-    // }
     var pt = svg.createSVGPoint();
     pt.x = evt.clientX;
     pt.y = evt.clientY;
     pt = pt.matrixTransform(svg.getScreenCTM().inverse());
-    selected.x = pt.x;
-    selected.y = pt.y;
+    if (selected != null) {
+        selected.x = pt.x;
+        selected.y = pt.y;
+    }
 }
 
 function stopMovingElem() {
     selected = null;
-    // run();
 }
 
 function updateSVG() {
@@ -197,49 +157,19 @@ function updateSVG() {
     });
 }
 
-function restart() {
-    reset();
-    // run();
-}
-function reset() {
-    initializePos();
-    updateSVG();
-}
-
 function update() {
-    var force;
     for (var j = 0; j < paintInterval; j++) {
         // alpha += (alphaTarget - alpha) * alphaDecay;
         calForce();
-        force = moveNodes();
+        moveNodes();
     }
     updateSVG();
-    return force;
 }
 
 function run() {
     function loop() {
-        var force = update();
-        var flag = moving;
-        moving = false;
-
-        // if (force > forceThreshold && alpha >= alphaMin && selected == null) {
-        requestAnimationFrame(loop);
-        // }
-    }
-    requestAnimationFrame(loop);
-}
-
-function step() {
-    var iterations = document.getElementById("inputStep").value,
-        i = 0;
-
-    function loop() {
         update();
-        i += paintInterval;
-        if (i < iterations) {
-            requestAnimationFrame(loop);
-        }
+        requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
 }
@@ -248,18 +178,16 @@ function calForce() {
     links.forEach(function (link, index) {
         var node1 = link.source;
         var node2 = link.target;
-        var force1, force2;
-        force1 = force2 = calAttractionForce(node1, node2, index);
-        node1.netForce.add(force1.multiply(1 - bias[index]));
-        node2.netForce.add(force2.multiply(-bias[index]));
+        var force = calAttractionForce(node1, node2, index);
+        node1.netForce.add(force.multiply(1 - attractionBias[index]));
+        node2.netForce.add(force.multiply(-attractionBias[index]));
     });
     nodes.forEach(function (node1, index1) {
         nodes.forEach(function (node2, index2) {
-            if (index2 < index1) {
-                var force = calRepulsionForce(node1, node2);
-                node1.netForce.add(force);
-                node2.netForce.add(force.multiply(-1));
-            }
+            if (index2 == index1) return false;
+            var force = calRepulsionForce(node1, node2);
+            node1.netForce.add(force);
+            node2.netForce.add(force.multiply(-1));
         });
     });
 }
@@ -268,24 +196,13 @@ function moveNodes() {
     var xSum = 0,
         ySum = 0,
         xShift,
-        yShift,
-        force = 0;
+        yShift;
 
     //move nodes according to force
     nodes.forEach(function (node) {
-        // if(node.id == "Labarre") {
-        //     console.log("Labarre: " + node.netForce.x + ", "+node.netForce.y);
-        // }
-        // if(node.id == "Gervais") {
-        //     console.log("Gervais: " + node.netForce.x + ", "+node.netForce.y);
-        // }
-        //cannot use displacement as condition, since it ignores the potential of movement
-        force += Math.abs(node.netForce.x);
-        force += Math.abs(node.netForce.y);
-
         if (node == selected) return true;
 
-        node.netForce.multiply(velocityDecay);
+        node.netForce = node.netForce.multiply(velocityDecay);
         node.x += node.netForce.x;
         if (node.x < 0) {
             node.x = 0;
@@ -298,8 +215,7 @@ function moveNodes() {
         } else if (node.y > height) {
             node.y = height;
         }
-
-        node.netForce.reset();
+        // node.netForce.reset();
 
         xSum += node.x;
         ySum += node.y;
@@ -308,17 +224,14 @@ function moveNodes() {
     //center the layout
     xShift = xSum / nodes.length - centerX;
     yShift = ySum / nodes.length - centerY;
-
     nodes.forEach(function (node) {
         if (node == selected) return true;
         node.x -= xShift;
         node.y -= yShift;
     });
-
-    return force;
 }
 
-function Force(x, y) {
+function Vector(x, y) {
     this.x = x;
     this.y = y;
     this.add = function (force) {
@@ -329,16 +242,15 @@ function Force(x, y) {
         var multiplier = magnitude / Math.sqrt(this.x * this.x + this.y * this.y);
         this.x *= multiplier;
         this.y *= multiplier;
-        return this;
     }
     this.reset = function () {
         this.x = 0;
         this.y = 0;
     }
     this.multiply = function (multiplier) {
-        this.x *= multiplier;
-        this.y *= multiplier;
-        return this;
+        var x = this.x * multiplier;
+        var y = this.y * multiplier;
+        return new Vector(x, y);
     }
 }
 
@@ -348,8 +260,9 @@ function calRepulsionForce(node1, node2) {
     if (dx == 0) dx = jiggle();
     if (dy == 0) dy = jiggle();
 
-    var force = new Force(dx, dy);
-    return force.scale(repulsionConst / (dx * dx + dy * dy) * alpha);
+    var force = new Vector(dx, dy);
+    force.scale(repulsionConst / (dx * dx + dy * dy) * alpha);
+    return force;
 }
 
 function calAttractionForce(node1, node2, i) {
@@ -358,12 +271,12 @@ function calAttractionForce(node1, node2, i) {
     if (dx == 0) dx = jiggle();
     if (dy == 0) dy = jiggle();
     var r = Math.sqrt(dx * dx + dy * dy);
-    var force = new Force(-dx, -dy);
+    var force = new Vector(-dx, -dy);
 
     // var magnitude = attractionConst * Math.log(r / defaultLinkLength);
-    // var magnitude = attractionConst * (r - defaultLinkLength);
     var magnitude = attractionConsts[i] * (1 - defaultLinkLength / r) * alpha;
-    return force.scale(magnitude);
+    force.scale(magnitude);
+    return force;
 }
 
 function jiggle() {
