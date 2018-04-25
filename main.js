@@ -8,14 +8,21 @@ var selected = null,
     oldMouseX,
     oldMouseY;
 
-var repulsionConst = 500,
+var repulsionConst = 30,
     attractionConsts,
-    attractionConstBase = 20,
-    defaultLinkLength = 50,
-    movementRatio = 0.5,
+    bias,
+    // attractionConstBase = 20,
+    attractionConstBase = 1,
+    // defaultLinkLength = 50,
+    defaultLinkLength = 30,
+    velocityDecay = 0.6,
     paintInterval = 10,
     // moveNodesRatio = 0.1,
-    forceThreshold = 1;
+    forceThreshold = 2,
+    alpha = 1,
+    alphaMin = 0.001,
+    alphaDecay = 1 - Math.pow(alphaMin, 1 / 300),
+    alphaTarget = 0;
 
 var initialRadius = 10,
     initialAngle = Math.PI * (3 - Math.sqrt(5));
@@ -34,6 +41,7 @@ window.onload = function () {
     height = svg.scrollHeight;
     centerX = width / 2;
     centerY = height / 2;
+
     svg.onmousemove = moveElem;
 
     var graph = JSON.parse(textGraphInfo);
@@ -54,6 +62,7 @@ window.onload = function () {
     addToSVG();
     console.log("nodes: " + nodes.length);
     console.log("links: " + links.length);
+    run();
 }
 
 function initializePos() {
@@ -88,10 +97,12 @@ function initializeAttractionConsts() {
     });
 
     attractionConsts = new Array(links.length);
+    bias = new Array(links.length);
     links.forEach(function (link, index) {
         degree1 = degreeCount[link.source.index];
         degree2 = degreeCount[link.target.index];
         attractionConsts[index] = attractionConstBase / Math.min(degree1, degree2);
+        bias[index] = degree1 / (degree1 + degree2);
     });
 }
 
@@ -134,28 +145,34 @@ function addToSVG() {
 }
 
 function moveElem(evt) {
-    moving = true;
+    // moving = true;
 
-    var newMouseX = evt.clientX;
-    var newMouseY = evt.clientY;
+    // var newMouseX = evt.clientX;
+    // var newMouseY = evt.clientY;
 
-    var dx = newMouseX - oldMouseX;
-    var dy = newMouseY - oldMouseY;
+    // var dx = newMouseX - oldMouseX;
+    // var dy = newMouseY - oldMouseY;
 
-    oldMouseX = newMouseX;
-    oldMouseY = newMouseY;
+    // oldMouseX = newMouseX;
+    // oldMouseY = newMouseY;
 
-    if (selected !== null) {
-        selected.x += dx;
-        selected.y += dy;
-        // requestAnimationFrame(update);
-        run();
-    }
+    // if (selected !== null) {
+    //     selected.x += dx;
+    //     selected.y += dy;
+    //     // requestAnimationFrame(update);
+    //     // run();
+    // }
+    var pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    pt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    selected.x = pt.x;
+    selected.y = pt.y;
 }
 
 function stopMovingElem() {
     selected = null;
-    run();
+    // run();
 }
 
 function updateSVG() {
@@ -182,7 +199,7 @@ function updateSVG() {
 
 function restart() {
     reset();
-    run();
+    // run();
 }
 function reset() {
     initializePos();
@@ -192,6 +209,7 @@ function reset() {
 function update() {
     var force;
     for (var j = 0; j < paintInterval; j++) {
+        // alpha += (alphaTarget - alpha) * alphaDecay;
         calForce();
         force = moveNodes();
     }
@@ -204,10 +222,10 @@ function run() {
         var force = update();
         var flag = moving;
         moving = false;
-        
-        if (force > forceThreshold && selected == null) {
-            requestAnimationFrame(loop);
-        }
+
+        // if (force > forceThreshold && alpha >= alphaMin && selected == null) {
+        requestAnimationFrame(loop);
+        // }
     }
     requestAnimationFrame(loop);
 }
@@ -227,21 +245,22 @@ function step() {
 }
 
 function calForce() {
+    links.forEach(function (link, index) {
+        var node1 = link.source;
+        var node2 = link.target;
+        var force1, force2;
+        force1 = force2 = calAttractionForce(node1, node2, index);
+        node1.netForce.add(force1.multiply(1 - bias[index]));
+        node2.netForce.add(force2.multiply(-bias[index]));
+    });
     nodes.forEach(function (node1, index1) {
         nodes.forEach(function (node2, index2) {
             if (index2 < index1) {
                 var force = calRepulsionForce(node1, node2);
                 node1.netForce.add(force);
-                node2.netForce.add(force.reverse());
+                node2.netForce.add(force.multiply(-1));
             }
         });
-    });
-    links.forEach(function (link, index) {
-        var node1 = link.source;
-        var node2 = link.target;
-        var force = calAttractionForce(node1, node2, index);
-        node1.netForce.add(force);
-        node2.netForce.add(force.reverse());
     });
 }
 
@@ -254,29 +273,36 @@ function moveNodes() {
 
     //move nodes according to force
     nodes.forEach(function (node) {
+        // if(node.id == "Labarre") {
+        //     console.log("Labarre: " + node.netForce.x + ", "+node.netForce.y);
+        // }
+        // if(node.id == "Gervais") {
+        //     console.log("Gervais: " + node.netForce.x + ", "+node.netForce.y);
+        // }
         //cannot use displacement as condition, since it ignores the potential of movement
         force += Math.abs(node.netForce.x);
         force += Math.abs(node.netForce.y);
 
-        if (node != selected) {
-            node.x += movementRatio * node.netForce.x;
-            if (node.x < 0) {
-                node.x = 0;
-            } else if (node.x > width) {
-                node.x = width;
-            }
-            node.y += movementRatio * node.netForce.y;
-            if (node.y < 0) {
-                node.y = 0;
-            } else if (node.y > height) {
-                node.y = height;
-            }
+        if (node == selected) return true;
 
-            node.netForce.reset();
-
-            xSum += node.x;
-            ySum += node.y;
+        node.netForce.multiply(velocityDecay);
+        node.x += node.netForce.x;
+        if (node.x < 0) {
+            node.x = 0;
+        } else if (node.x > width) {
+            node.x = width;
         }
+        node.y += node.netForce.y;
+        if (node.y < 0) {
+            node.y = 0;
+        } else if (node.y > height) {
+            node.y = height;
+        }
+
+        node.netForce.reset();
+
+        xSum += node.x;
+        ySum += node.y;
     });
 
     //center the layout
@@ -284,10 +310,9 @@ function moveNodes() {
     yShift = ySum / nodes.length - centerY;
 
     nodes.forEach(function (node) {
-        if (node != selected) {
-            node.x -= xShift;
-            node.y -= yShift;
-        }
+        if (node == selected) return true;
+        node.x -= xShift;
+        node.y -= yShift;
     });
 
     return force;
@@ -304,41 +329,45 @@ function Force(x, y) {
         var multiplier = magnitude / Math.sqrt(this.x * this.x + this.y * this.y);
         this.x *= multiplier;
         this.y *= multiplier;
-    }
-    this.reverse = function () {
-        return new Force(-this.x, -this.y);
+        return this;
     }
     this.reset = function () {
         this.x = 0;
         this.y = 0;
+    }
+    this.multiply = function (multiplier) {
+        this.x *= multiplier;
+        this.y *= multiplier;
+        return this;
     }
 }
 
 function calRepulsionForce(node1, node2) {
     var dx = node1.x - node2.x;
     var dy = node1.y - node2.y;
+    if (dx == 0) dx = jiggle();
+    if (dy == 0) dy = jiggle();
+
     var force = new Force(dx, dy);
-    if (force.x !== 0 || force.y !== 0) {
-        force.scale(repulsionConst / (dx * dx + dy * dy));
-    }
-    return force;
+    return force.scale(repulsionConst / (dx * dx + dy * dy) * alpha);
 }
 
-function calAttractionForce(node1, node2, index) {
-    var dx = node1.x - node2.x,
-        dy = node1.y - node2.y,
-        r = Math.sqrt(dx * dx + dy * dy),
-        force = new Force(-dx, -dy),
-        magnitude;
+function calAttractionForce(node1, node2, i) {
+    var dx = node1.x + node1.netForce.x - node2.x - node2.netForce.x,
+        dy = node1.y + node1.netForce.y - node2.y - node2.netForce.y;
+    if (dx == 0) dx = jiggle();
+    if (dy == 0) dy = jiggle();
+    var r = Math.sqrt(dx * dx + dy * dy);
+    var force = new Force(-dx, -dy);
 
-    if (force.x !== 0 || force.y !== 0) {
-        // magnitude = attractionConst * Math.log(r / defaultLinkLength);
-        // magnitude = attractionConst * (r - defaultLinkLength);
-        magnitude = attractionConsts[index] * (1 - defaultLinkLength / r);
-        force.scale(magnitude);
-    }
+    // var magnitude = attractionConst * Math.log(r / defaultLinkLength);
+    // var magnitude = attractionConst * (r - defaultLinkLength);
+    var magnitude = attractionConsts[i] * (1 - defaultLinkLength / r) * alpha;
+    return force.scale(magnitude);
+}
 
-    return force;
+function jiggle() {
+    return (Math.random() - 0.5) * 1e-6;
 }
 
 function color(group) {
