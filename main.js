@@ -4,7 +4,7 @@ var colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
 
 //for initial layout
 var initialRadius = 10,
-initialAngle = Math.PI * (3 - Math.sqrt(5));
+    initialAngle = Math.PI * (3 - Math.sqrt(5));
 
 //for calculating forces 
 var repulsionConst = 30,
