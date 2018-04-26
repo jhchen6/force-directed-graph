@@ -1,6 +1,7 @@
-var svg, width, height, centerX, centerY;
-var colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
-    "green", "red", "pink", "purple", "plum", "brown"];
+var svg, width, height, centerX, centerY,
+    nodes, links,
+    colors = ["lightgreen", "blue", "lightblue", "orange", "lightsalmon",
+        "green", "red", "pink", "purple", "plum", "brown"];
 
 //for initial layout
 var initialRadius = 10,
