@@ -71,7 +71,8 @@ function initializePos() {
 }
 
 function initializeConsts() {
-    var degreeCount = new Array(nodes.length),
+    // var degreeCount = new Array(nodes.length),
+    var degreeCount = [],
         index;
 
     links.forEach(function (link) {
@@ -89,8 +90,10 @@ function initializeConsts() {
         }
     });
 
-    attractionConsts = new Array(links.length);
-    attractionBias = new Array(links.length);
+    // attractionConsts = new Array(links.length);
+    // attractionBias = new Array(links.length);
+    attractionConsts = [];
+    attractionBias = [];
     links.forEach(function (link, index) {
         degree1 = degreeCount[link.source.index];
         degree2 = degreeCount[link.target.index];
