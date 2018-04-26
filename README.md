@@ -16,10 +16,10 @@ but I don't quite understand the quadTree used to calculate attraction force...
 
 ### problems remaining
 1. use of json...
-    * I tried to load local .json file. 
-      * it works in Edge but not in Chrome.
-    * then I came across a not so elegant way to do it: 
-      * use service provided by [myjson.com](http://myjson.com/).
+    * I tried to load local .json file.
+      * it works in Edge but not in Chrome.
+    * then I came across a not so elegant way to do it:
+      * use service provided by [myjson.com](http://myjson.com/).
 2. adding elements to svg
     * the `.append()` method does not work...
       * the innerHTML of svg is truly modified,
@@ -31,10 +31,11 @@ but I don't quite understand the quadTree used to calculate attraction force...
 3. animation
     * I used `.setInterval()`
     * also `.requestAnimationFrame()`
-      * tha latter seems smoother
+      * the latter seems smoother
       * but when dragging nodes around it seems called repeatedly
       * so that many frames running together slows the animation being slow
     * anyway I logged all of the frames when they are called 
     * and cancle all of the previous frames when new one is called
-      * -_-
 
+
+-_-
