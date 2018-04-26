@@ -35,7 +35,7 @@ but I don't quite understand the quadTree used to calculate attraction force...
       * but when dragging nodes around it seems called repeatedly
       * so that many frames running together slows the animation
     * anyway I logged all of the frames when they are called 
-    * and cancle all of the previous frames when new one is called
+    * and cancel all of the previous frames when new one is called
 
 
 -_-
