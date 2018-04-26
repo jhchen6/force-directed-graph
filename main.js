@@ -28,7 +28,7 @@ var $circles,
     alphaDecay = 1 - Math.pow(alphaMin, 1 / 300),
     alphaTarget = 0;
 
-function init (graph) {
+function init(graph) {
     svg = document.getElementById("svg");
     width = svg.scrollWidth;
     height = svg.scrollHeight;
@@ -123,30 +123,32 @@ function addToSVG() {
     $circles = $("circle");
     $lines = $("line");
 
-    $circles.each(function (index) {
-        $(this).mousedown(function (evt) {
+    $circles.each(function (index, circle) {
+        $(circle).mousedown(function (evt) {
             selected = nodes[index];
         });
     });
 }
 
 function moveElem(evt) {
-    if (selected != null) {
-        var pt = svg.createSVGPoint();
-        pt.x = evt.clientX;
-        pt.y = evt.clientY;
-        pt = pt.matrixTransform(svg.getScreenCTM().inverse());
-        selected.x = pt.x;
-        selected.y = pt.y;
-        animationFrames.forEach(function (animationFrame) {
-            cancelAnimationFrame(animationFrame);
-        });
-        alpha = initialAlpha;
-        run();
-    }
+    if (selected == null) return;
+
+    var pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    pt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    selected.x = pt.x;
+    selected.y = pt.y;
+    animationFrames.forEach(function (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+    });
+    alpha = initialAlpha;
+    run();
 }
 
 function stopMovingElem() {
+    if (selected == null) return;
+    
     selected = null;
     animationFrames.forEach(function (animationFrame) {
         cancelAnimationFrame(animationFrame);
@@ -156,11 +158,11 @@ function stopMovingElem() {
 }
 
 function updateSVG() {
-    $lines.each(function (index) {
+    $lines.each(function (index, line) {
         var link = links[index];
         var node1 = link.source;
         var node2 = link.target;
-        $(this).attr({
+        $(line).attr({
             x1: node1.x,
             y1: node1.y,
             x2: node2.x,
@@ -168,9 +170,9 @@ function updateSVG() {
         });
     });
 
-    $circles.each(function (index) {
+    $circles.each(function (index, circle) {
         var node = nodes[index];
-        $(this).attr({
+        $(circle).attr({
             cx: node.x,
             cy: node.y
         });
