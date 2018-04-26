@@ -36,6 +36,9 @@ but I don't quite understand the quadTree used to calculate attraction force...
       * so that many frames running together slows the animation
     * anyway I logged all of the frames when they are called 
     * and cancel all of the previous frames when new one is called
+4. position shift
+    * when mousedown or mouseup on a node, the entire layout shift a bit away from its original position
+      * I tried relative coords, looks like the problem still persists
 
 
 -_-
