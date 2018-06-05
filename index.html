@@ -91,7 +91,6 @@
         d.fy = d3.event.y;
       }
       function ended(d) { //bug: rememer to put d here
-        console.log(d3.event);
         if (!d3.event.active) forces.alphaTarget(0); //
         d.fx = null; //bug: if not set to null, the movement of this dragged node stops
         d.fy = null; //bug
