@@ -1,44 +1,15 @@
 # force-directed-graph
-hand coded force-directed graph, a coding practice
 
-### the first version
-(visible in the commit history)
-almost wild, with awkward design and implementation, and did not support interaction nor animation
+This is a new coder's coding practice, following [Mike Bostock](https://bost.ocks.org/mike/)'s [Force-Directed Graph](https://bl.ocks.org/mbostock/4062045) example.
 
-### the current version
-more cultivated, adopted many techniques from the [d3-force](https://github.com/d3/d3-force) repository, including: 
+The newer version uses [d3.js](https://d3js.org/) (this is the first time I use d3.js (by the way, it's not been long since the first time I coded)), which is handy and lovely. A lot of thanks to Mike Bostock.
 
-1. force formula and constants
-2. velocity decay
-3. initial layout method
+Notes of using d3 are included as comments in "index.html".
 
-but I don't quite understand the quadTree used to calculate attraction force...
+An old hand-coded version without using d3.js is archived as "index_old.html", which cites "main.js" and "main.css". (that's why I pay a lot of thanks to Mike Bostock. Suffering from the hard and you know things are valuable.)
 
-### problems remaining
-1. use of json...
-    * I tried to load local .json file.
-      * it works in Edge but not in Chrome.
-    * then I came across a not so elegant way to do it:
-      * use service provided by [myjson.com](http://myjson.com/).
-2. adding elements to svg
-    * the `.append()` method does not work...
-      * the innerHTML of svg is truly modified,
-      * but nothing is displayed = =.
-    * then anyhow I found out that:
-      * directly editing the innerHTML of svg works.
-        * I hope it's not too slow
-        * as I remember manipulating long strings will take quite a while..
-3. animation
-    * I used `.setInterval()`
-    * also `.requestAnimationFrame()`
-      * the latter seems smoother
-      * but when dragging nodes around it seems called repeatedly
-      * so that many frames running together slows the animation
-    * anyway I logged all of the frames when they are called 
-    * and cancel all of the previous frames when new one is called
-4. position shift
-    * when mousedown or mouseup on a node, the entire layout shift a bit away from its original position
-      * I tried relative coords, looks like the problem still persists
+## on using local file
 
+Directly opening "index.html" that asks for local files via `GET` fires cross origin error.
 
--_-
+A solution: https://stackoverflow.com/a/21608670/9897117
