@@ -3,27 +3,111 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Force-directed Graph Drawing</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" type="text/css" media="screen" href="main.css" />
-  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
-  <script src="main.js"></script>
-  <script>
-    $(document).ready(function () {
-      $.getJSON("https://api.myjson.com/bins/6dtwv", function (graph) {
-        init(graph);
-        run();
-      });
-    });
-  </script>
+  <title>Force-Directed Layout</title>
+  <style>
+    svg {
+      border: 1px solid lightgray;
+    }
+
+    .links line {
+      stroke: grey;
+      /* stroke-width: 1px;  adjust: make it meaningful*/
+      opacity: 0.5;
+    }
+
+    .nodes circle {
+      stroke: white;
+      stroke-width: 1px;
+    }
+  </style>
 </head>
 
 <body>
-  <svg width="960" height="600" id="svg"></svg>
-  <div>
-    <button onclick="restart()">restart</button>
-  </div>
+  <h1>Force-Directed Graph</h1>
+  <p>This is a new coder's coding practice, following
+    <a href="https://bost.ocks.org/mike/">Mike Bostock</a>'s
+    <a href="https://bl.ocks.org/mbostock/4062045">Force-Directed Graph</a> example.</p>
+  <svg></svg>
+  <p>An old version without using d3.js is archived under the same directory; see index_old.html.</p>
+
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script>
+    var width = 960,
+      height = 600;
+    var svg = d3.select("svg")
+      .attr("width", width)
+      .attr("height", height);
+    // var colors = d3.scaleOrdinal(d3.schemeSet3); //adjust: colors too faint
+    var colors = d3.scaleOrdinal(d3.schemePaired);
+
+    var globalGraph;
+    d3.json("miserables.json").then(function (graph) { //bug: d3.v5 use .then()
+      globalGraph = graph;
+      var lines = svg.append("g")
+        .attr("class", "links")
+        .selectAll("line")
+        // lines.data(graph.links) //bug: .data() creates new selection
+        .data(graph.links)
+        .enter()
+        .append("line")
+        .attr("stroke-width", d => Math.sqrt(d.value));
+
+      var circles = svg.append("g")
+        .attr("class", "nodes")
+        .selectAll("circle")
+        // circles.data(graph.nodes) //bug: .data() creates new selection
+        .data(graph.nodes)
+        .enter()
+        .append("circle")
+        .attr("r", 5)
+        .attr("fill", d => colors(+d.group))
+        // .append("title") //bug: var circles will refer to titles
+        // .text(d => d.id);
+        .call(d3.drag()
+          .on("start", started)
+          .on("drag", dragging)
+          .on("end", ended));
+
+      circles.append("title")
+        .text(d => d.id);
+
+      var forces = d3.forceSimulation(graph.nodes)
+        .force("charge", d3.forceManyBody())
+        .force("link", d3.forceLink(graph.links).id(d => d.id))
+        .force("center", d3.forceCenter(width / 2, height / 2)) //coords not as array
+        .on("tick", ticked);
+
+      function started(d) {
+        //bug: if not restart, the movement stops once balance is achieved
+        //bug: if not reset alphaTarget, won't really start to move, since alphaTarget achieved
+        // if (!d3.event.active) forces.restart(); 
+        if (!d3.event.active) forces.alphaTarget(0.3).restart();
+        //so what's d3.event.active? 
+        //answer: https://stackoverflow.com/questions/42605261/d3-event-active-purpose-in-drag-dropping-circles
+        //in short: handling multiple drag events on multitouch devices 
+      }
+      function dragging(d) {
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+      }
+      function ended(d) { //bug: rememer to put d here
+        console.log(d3.event);
+        if (!d3.event.active) forces.alphaTarget(0); //
+        d.fx = null; //bug: if not set to null, the movement of this dragged node stops
+        d.fy = null; //bug
+      }
+      function ticked() {
+        lines
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+        circles
+          .attr("cx", d => d.x)
+          .attr("cy", d => d.y);
+      }
+    });
+  </script>
 </body>
 
 </html>
